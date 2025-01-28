@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "macos",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/engine",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "MIMode": "lldb"
+        },
+        {
+            "name": "WindowsLaunch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/engine",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "lldb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for lldb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+        }
+    ]
+}
