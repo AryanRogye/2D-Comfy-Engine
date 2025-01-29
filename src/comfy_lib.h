@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <format>
 #include <iostream>
 #include <format>
 
@@ -24,6 +25,11 @@
 #elif __APPLE__
 #define DEBUG_BREAK() __builtin_trap()
 #endif
+
+#define BIT(x) 1 << x
+#define KB(x) ((unsigned long long)1024 * x)
+#define MB(x) ((unsigned long long)1024 * KB(x))
+#define GB(x) ((unsigned long long)1024 * MB(x))
 
 // #########################################################
 // Logging
@@ -77,7 +83,10 @@ void _log(const std::string& prefix,const std::string& msg,TextColor textColor,A
     formatBuffer << TextColorTable[textColor] << " " << prefix + " " << msg << " \033[0m\n";
     // Format the String to use variadic arguments
     char textBuffer[8192];
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat-security"
     snprintf(textBuffer, sizeof(textBuffer), formatBuffer.str().c_str(), args ...);
+    #pragma GCC diagnostic pop
     // Print the formatted string
     puts(textBuffer);
 }
@@ -200,8 +209,27 @@ char* read_file(char* filePath, int* fileSize, char* buffer)
     memset(buffer, 0, *fileSize + 1);
     fread(buffer, sizeof(char), * fileSize, file);
     fclose(file);
-
+    
+    buffer[*fileSize] = '\0';
     return buffer;
+}
+char* read_file(char* filePath, int* fileSize, BumpAllocator* bumpAllocator)
+{
+    SM_ASSERT(filePath, "NO FILE PATH PROVIDED");
+    SM_ASSERT(fileSize, "NO FILE SIZE PROVIDED");
+    
+    char* file = 0;
+    long fileSize2 = get_file_size(filePath);
+    
+    if (!fileSize2)
+    {
+        SM_ERROR("Failed to get file size: %s", filePath);
+        return nullptr;
+    }
+
+    char* buffer = bump_alloc(bumpAllocator, fileSize2 + 1);
+    file = read_file(filePath, fileSize, buffer);
+    return file;
 }
 
 void write_file(char* filePath, char* buffer, int size)

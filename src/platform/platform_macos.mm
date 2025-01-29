@@ -9,8 +9,8 @@
 
 // Global Variable for tracking window state
 bool running = true;
-void* window;
-void* glContext; // Open GL Context
+NSWindow* window;
+NSOpenGLContext* glContext; // Open GL Context
 
 // Create the macOS window
 bool platform_create_window(int width, int height, const char* title)
@@ -21,22 +21,22 @@ bool platform_create_window(int width, int height, const char* title)
 
         // Define the window's dimensions and style
         NSRect rect = NSMakeRect(100, 100, width, height);
-        NSWindow* nsWindow = [[NSWindow alloc] initWithContentRect:rect
+        window = [[NSWindow alloc] initWithContentRect:rect
             styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable)
             backing:NSBackingStoreBuffered
             defer:NO
         ];
 
-        if (!nsWindow)
+        if (!window)
         {
             NSLog(@"Failed to create NSWindow");
             return false;
         }
 
         // Set the window title
-        [nsWindow setTitle:[NSString stringWithUTF8String:title]];
+        [window setTitle:[NSString stringWithUTF8String:title]];
         // Show the window
-        [nsWindow makeKeyAndOrderFront:nil];
+        [window makeKeyAndOrderFront:nil];
         // Ensure app stays in foreground
         [NSApp activateIgnoringOtherApps:YES];
         
@@ -44,33 +44,45 @@ bool platform_create_window(int width, int height, const char* title)
         NSOpenGLPixelFormatAttribute attrs[] = {
             NSOpenGLPFADoubleBuffer,
             NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-            NSOpenGLPFAColorSize, 24,
+            // cannot be 32 on a macOS because color buffer is split into components
+            // and NSOpenGLPFAColorSize doesnt include alpha channel in its value
+            // it only counts the red, green and blue channels 3 x 8 = 24 so stupid
+            NSOpenGLPFAColorSize, 24, 
             NSOpenGLPFAAlphaSize, 8,
             NSOpenGLPFADepthSize, 24,
             NSOpenGLPFAAccelerated,
             0
         };
+        // Create Pixel Format
         NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
         if (!pixelFormat) 
         {
             NSLog(@"Failed to create OpenGL pixel format");
             return false;
         }
-
-        NSOpenGLContext* nsGlContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
-        if (!nsGlContext) 
+        
+        // Create OpenGL Context
+        glContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
+        if (!glContext) 
         {
             NSLog(@"Failed to create OpenGL context");
             return false;
         }
         
-        // [glContext NSOpenGLView:[window contextView]];
-        [nsGlContext setView:[nsWindow contentView]];
-        [nsGlContext makeCurrentContext];
-
-        // Set the global variables
-        window = (void*)nsWindow;
-        glContext = (void*)nsGlContext;
+        // Create NSOpenGLView
+        NSOpenGLView* glView = [[NSOpenGLView alloc] initWithFrame:rect pixelFormat:pixelFormat];
+        if (!glView)
+        {
+            NSLog(@"Failed to create OpenGL view");
+            return false;
+        }
+    
+        // Set the OpenGL context for the NSOpenGLView
+        [glView setOpenGLContext:glContext];
+        // Set the NSOpenGLView as the content view of the NSWindow
+        [window setContentView:glView];
+        // Make the OpenGL context the current context
+        [glContext makeCurrentContext];
 
         // Set ViewPort
         glViewport(0, 0, width, height);
@@ -104,17 +116,14 @@ void platform_update_window()
 void platform_destroy_window()
 {
     @autoreleasepool {
-        NSOpenGLContext* nsGlContext = (NSOpenGLContext*)glContext;
-        NSWindow* nsWindow = (NSWindow*)window;
-
-        if (nsGlContext)
+        if (glContext)
         {
-            [nsGlContext clearDrawable];
+            [glContext clearDrawable];
             glContext = nil;
         }
-        if (nsWindow)
+        if (window)
         {
-            [nsWindow close];
+            [window close];
             window = nil;
         }
     }
@@ -132,8 +141,7 @@ void platform_flush_buffers()
     @autoreleasepool {
         if (glContext)
         {
-            NSOpenGLContext* nsGlContext = (NSOpenGLContext*)glContext;
-            [nsGlContext flushBuffer];
+            [glContext flushBuffer];
         }
     }
 }

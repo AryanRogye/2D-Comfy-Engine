@@ -1,9 +1,9 @@
 #include <OpenGL/OpenGL.h>
 #include <iostream>
+#include "input.h"
 #include "OpenGL/gl3.h"
 #include "comfy_lib.h"
 
-#define GL_SILENCE_DEPRECATION
 
 // #########################################################
 // Platform Global Variables
@@ -17,10 +17,14 @@
 #include "platform/linux/platform_linux.h"
 #endif
 
+#include "gl_renderer.cpp"
+
 int main()
 {
-    std::cout << "Hello World!" << std::endl;
-    if (!platform_create_window(800, 600, "Hello World!"))
+    BumpAllocator transientStorage = make_bump_allocator(MB(50));
+
+    // Create A Window
+    if (!platform_create_window(1000, 800, "Hello World!"))
     {
         SM_ERROR("Failed to create window");
         return -1;
@@ -28,7 +32,10 @@ int main()
         SM_TRACE("Window created successfully");
     }
 
-    // Check for any errors with opengl
+    input.screenSizeX = 1000;
+    input.screenSizeY = 800;
+
+    // Check for any errors with OpenGL
     GLenum error = glGetError();
     if (error != GL_NO_ERROR)
     {
@@ -36,13 +43,13 @@ int main()
     } else {
         SM_TRACE("There are no OpenGL errors");
     }
-
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    
+    gl_init(&transientStorage);
 
     while (running)
     {
         platform_update_window();
-        glClear(GL_COLOR_BUFFER_BIT);
+        gl_render();
         platform_flush_buffers();
     }
     platform_destroy_window();
